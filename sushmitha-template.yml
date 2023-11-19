@@ -1,0 +1,446 @@
+Parameters:
+  EnvironmentName:
+    Type: String
+    Description: Enter Environment Name
+
+  myVPCcidrblock:
+    Type: String
+    Default: 172.20.0.0/20 
+
+  myPublicSubnet1cidr:
+    Type: String
+    Default: 172.20.1.0/24  
+
+  myPublicSubnet2cidr:
+    Type: String
+    Default: 172.20.2.0/24 
+
+  myPrivateSubnet1cidr:
+    Type: String
+    Default: 172.20.3.0/24 
+
+  myPrivateSubnet2cidr:
+    Type: String
+    Default: 172.20.4.0/24       
+
+  myDBSubnet1cidr:
+    Type: String
+    Default: 172.20.5.0/24  
+
+  myDBSubnet2cidr:
+    Type: String
+    Default: 172.20.6.0/24  
+
+  myAMIID:
+    Type: String
+    Default: ami-059cdad1f35de63c0
+
+  InstanceType:
+    Type: String
+    Default: t2.micro    
+
+  KeyName:
+    Type: String
+    Default: appkeypair
+
+Resources:
+  myVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+     CidrBlock: !Ref myVPCcidrblock
+     EnableDnsSupport: true
+     EnableDnsHostnames: true
+     Tags:
+      - Key: Name
+        Value: !Ref EnvironmentName
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Ref EnvironmentName
+
+  InternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref InternetGateway
+      VpcId: !Ref myVPC
+
+  myPublicWebSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref myVPC
+      CidrBlock: !Ref myPublicSubnet1cidr
+      MapPublicIpOnLaunch: true
+      AvailabilityZone:  !Select [ 0, !GetAZs '' ]
+      Tags:
+       - Key: Name
+         Value:  !Sub ${EnvironmentName} Public Subnet (AZ1) 
+
+  myPublicWebSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref myVPC
+      CidrBlock: !Ref myPublicSubnet2cidr
+      MapPublicIpOnLaunch: true
+      AvailabilityZone:  !Select [ 1, !GetAZs '' ]
+      Tags:
+       - Key: Name
+         Value:  !Sub ${EnvironmentName} Public Subnet (AZ2)
+
+  myPrivateAppSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref myVPC
+      CidrBlock: !Ref myPrivateSubnet1cidr
+      AvailabilityZone:  !Select [ 0, !GetAZs '' ]
+      Tags:
+       - Key: Name
+         Value:  !Sub ${EnvironmentName} Private Subnet (AZ1)
+
+  myPrivateAppSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref myVPC
+      CidrBlock: !Ref myPrivateSubnet2cidr
+      AvailabilityZone:  !Select [ 1, !GetAZs '' ]
+      Tags:
+       - Key: Name
+         Value:  !Sub ${EnvironmentName} Private Subnet (AZ2)
+
+  myPrivateDBSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref myVPC
+      CidrBlock: !Ref myDBSubnet1cidr
+      AvailabilityZone:  !Select [ 0, !GetAZs '' ]
+      Tags:
+       - Key: Name
+         Value:  !Sub ${EnvironmentName} DB Subnet (AZ1)
+
+  myPrivateDBSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref myVPC
+      CidrBlock: !Ref myDBSubnet2cidr
+      AvailabilityZone:  !Select [ 1, !GetAZs '' ]
+      Tags:
+       - Key: Name
+         Value:  !Sub ${EnvironmentName} DB Subnet (AZ2)
+
+  myPublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref myVPC
+      Tags:
+       - Key: Name
+         Value: !Sub ${EnvironmentName} Public Route Table       
+
+  myPrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref myVPC
+      Tags:
+       - Key: Name
+         Value: !Sub ${EnvironmentName} Private Route Table       
+
+  myRoute:
+    Type: AWS::EC2::Route
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      RouteTableId: !Ref myPublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  myPublicWebSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId:
+        Ref: myPublicWebSubnet1
+      RouteTableId:
+        Ref: myPublicRouteTable         
+
+  myPublicWebSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId:
+        Ref: myPublicWebSubnet2
+      RouteTableId:
+        Ref: myPublicRouteTable           
+
+  myPrivateAppSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId:
+        Ref: myPrivateAppSubnet1
+      RouteTableId:
+        Ref: myPrivateRouteTable           
+
+  myPrivateAppSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId:
+        Ref: myPrivateAppSubnet2
+      RouteTableId:
+        Ref: myPrivateRouteTable 
+
+  myPrivateDBSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId:
+        Ref: myPrivateDBSubnet1
+      RouteTableId:
+        Ref: myPrivateRouteTable            
+
+  myPrivateDBSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId:
+        Ref: myPrivateDBSubnet2
+      RouteTableId:
+        Ref: myPrivateRouteTable      
+
+  NATGateway:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NATGatewayEIP.AllocationId
+      SubnetId: !Ref myPublicWebSubnet1
+      Tags:
+      - Key: Name
+        Value: !Ref EnvironmentName
+  NATGatewayEIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+  RouteNATGateway:
+    DependsOn: NATGateway
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref myPrivateRouteTable
+      DestinationCidrBlock: '0.0.0.0/0'
+      NatGatewayId: !Ref NATGateway
+
+  BastionHostSG:
+    Type: AWS::EC2::SecurityGroup
+    DependsOn: myVPC
+    Properties:
+      GroupDescription: Bastion sg to talk to web and app tier
+      VpcId: !Ref myVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 0
+          ToPort: 65535
+          CidrIp: 0.0.0.0/0
+
+  ApplicationLoadBalancerSG:
+    Type: AWS::EC2::SecurityGroup
+    DependsOn: myVPC
+    Properties:
+      GroupDescription: http traffic to web tier
+      VpcId: !Ref myVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 0
+          ToPort: 65535
+          CidrIp: 0.0.0.0/0
+
+  InternalLoadBalancerSG:
+    Type: AWS::EC2::SecurityGroup
+    DependsOn: myVPC
+    Properties:
+      GroupDescription: Web tier traffic to app tier
+      VpcId: !Ref myVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          SourceSecurityGroupId: !Ref WebtierSG
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22        
+          SourceSecurityGroupId: !Ref WebtierSG
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 0
+          ToPort: 65535
+          CidrIp: 0.0.0.0/0 
+
+  WebtierSG:
+    Type: AWS::EC2::SecurityGroup
+    DependsOn: myVPC
+    Properties:
+      GroupDescription: ApplicationLoadBalancer to web tier
+      VpcId: !Ref myVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          SourceSecurityGroupId: !Ref ApplicationLoadBalancerSG
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          SourceSecurityGroupId: !Ref BastionHostSG 
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 0
+          ToPort: 65535
+          CidrIp: 0.0.0.0/0   
+
+  AppTierSG:
+    Type: AWS::EC2::SecurityGroup
+    DependsOn: myVPC
+    Properties:
+      GroupDescription: Internal Load Balancer to AppTier
+      VpcId: !Ref myVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          SourceSecurityGroupId: !Ref InternalLoadBalancerSG
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          SourceSecurityGroupId: !Ref BastionHostSG 
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 0
+          ToPort: 65535
+          CidrIp: 0.0.0.0/0 
+
+  DatabaseSG:
+    Type: AWS::EC2::SecurityGroup
+    DependsOn: myVPC
+    Properties:
+      GroupDescription: Apptier to database tier
+      VpcId: !Ref myVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          SourceSecurityGroupId: !Ref AppTierSG
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 0
+          ToPort: 65535
+          CidrIp: 0.0.0.0/0    
+
+  BastionHostEC2: 
+    Type: AWS::EC2::Instance
+    Properties: 
+      ImageId: !Ref myAMIID
+      SecurityGroupIds: 
+        - !GetAtt BastionHostSG.GroupId 
+      InstanceType: !Ref InstanceType
+      SubnetId: !Ref myPublicWebSubnet1
+      KeyName: !Ref KeyName  
+
+  AppHost1EC2: 
+    Type: AWS::EC2::Instance
+    Properties: 
+      ImageId: !Ref myAMIID
+      SecurityGroupIds: 
+        - !GetAtt AppTierSG.GroupId 
+      InstanceType: !Ref InstanceType
+      SubnetId: !Ref myPrivateAppSubnet1
+      KeyName: !Ref KeyName
+
+  AppHost2EC2: 
+    Type: AWS::EC2::Instance
+    Properties: 
+      ImageId: !Ref myAMIID
+      SecurityGroupIds: 
+        - !GetAtt AppTierSG.GroupId 
+      InstanceType: !Ref InstanceType
+      SubnetId: !Ref myPrivateAppSubnet2
+      KeyName: !Ref KeyName
+
+  WebTierLoadBalancer:
+    Type: "AWS::ElasticLoadBalancingV2::LoadBalancer"
+    Properties:
+      Subnets: 
+       - !Ref myPublicWebSubnet1
+       - !Ref myPublicWebSubnet2
+      SecurityGroups: 
+        - !GetAtt ApplicationLoadBalancerSG.GroupId 
+  WebTierListener:
+    Type: "AWS::ElasticLoadBalancingV2::Listener"
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref WebTierALBTargetGroup
+      LoadBalancerArn: !Ref WebTierLoadBalancer
+      Port: "80"
+      Protocol: HTTP
+  WebTierALBTargetGroup:
+    Type: "AWS::ElasticLoadBalancingV2::TargetGroup"
+    Properties:
+      HealthCheckIntervalSeconds: 30
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      Port: 80
+      Protocol: HTTP
+      UnhealthyThresholdCount: 5
+      VpcId: !Ref myVPC
+
+  
+  AppTierLoadBalancer:
+    Type: "AWS::ElasticLoadBalancingV2::LoadBalancer"
+    Properties:
+      Subnets: 
+       - !Ref myPrivateAppSubnet1
+       - !Ref myPrivateAppSubnet2
+      SecurityGroups: 
+       - !GetAtt InternalLoadBalancerSG.GroupId  
+  AppTierListener:
+    Type: "AWS::ElasticLoadBalancingV2::Listener"
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref AppTierTargetGroup
+      LoadBalancerArn: !Ref AppTierLoadBalancer
+      Port: "80"
+      Protocol: HTTP
+  AppTierTargetGroup:
+    Type: "AWS::ElasticLoadBalancingV2::TargetGroup"
+    Properties:
+      HealthCheckIntervalSeconds: 30
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      Port: 80
+      Protocol: HTTP
+      UnhealthyThresholdCount: 5
+      VpcId: !Ref myVPC   
+
+  Database:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      VPCSecurityGroups: 
+       - !Ref DatabaseSG
+      AllocatedStorage: '20'
+      PubliclyAccessible: 'true'
+      DBInstanceClass: db.t2.micro
+      Engine: MySQL
+      MasterUsername: MyName
+      MasterUserPassword: MyPassword
+      DBSubnetGroupName: !Ref DatabaseSubnetGroup
+      AvailabilityZone:  !Select [ 0, !GetAZs '' ]
+
+
+  DatabaseSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: subnet group
+      SubnetIds: 
+       - !Ref myPrivateDBSubnet1
+       - !Ref myPrivateDBSubnet2 
